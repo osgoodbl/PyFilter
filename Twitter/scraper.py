@@ -2,7 +2,6 @@ import settings
 import tweepy
 import sys
 import csv
-import json
 
 
 class CustomStreamListener(tweepy.StreamListener):
@@ -13,13 +12,13 @@ class CustomStreamListener(tweepy.StreamListener):
         elif hasattr(status,'extended_tweet'):
             print(status.author.screen_name, status.created_at, status.text)
             # Writing status data
-            with open('OutputStreaming.csv', 'a') as f:
+            with open('huracan.csv', 'a') as f:
                 writer = csv.writer(f, delimiter = str(","))
                 writer.writerow([status.author.screen_name, status.id_str, status.created_at, str(status.text), str(status.entities), str(status.extended_tweet)])
         else:
             print(status.author.screen_name, status.created_at, status.text)
             # Writing status data
-            with open('OutputStreaming.csv', 'a') as f:
+            with open('huracan.csv', 'a') as f:
                 writer = csv.writer(f, delimiter = str(","))
                 writer.writerow([status.author.screen_name, status.id_str, status.created_at, str(status.text), str(status.entities), {"No Extended Entities":"Empty"} ])
 
@@ -34,7 +33,7 @@ class CustomStreamListener(tweepy.StreamListener):
     # Writing csv titles
 
 
-with open('OutputStreaming.csv', 'w') as f:
+with open('huracan.csv', 'w') as f:
     writer = csv.writer(f, delimiter = str(","))
     writer.writerow(['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'])
 

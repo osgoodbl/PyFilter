@@ -150,3 +150,5 @@ object_detection/test_ckpt/
 object_detection/test_data/
 
 object_detection/utils/
+
+images/
