@@ -10,4 +10,4 @@ while True:
     print('Running Detection')
     os.system(detect)
     print("Processed")
-    time.sleep(30.0 - ((time.time() - starttime) % 30.0))
+    time.sleep(120.0 - ((time.time() - starttime) % 120.0))
