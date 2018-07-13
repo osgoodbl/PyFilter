@@ -1,47 +1,47 @@
+#! /Users/brianosgood/.virtualenvs/huracan/bin/python
 import numpy as np
 import pandas as pd
 import os
 import sys
 import tensorflow as tf
-import matplotlib.pyplot as plt
+import tweepy
+# import matplotlib.pyplot as plt
 from PIL import Image
 from pandas import DataFrame
 from pandas.io.parsers import TextFileReader
-
+import subprocess
 sys.path.append("..")
 from object_detection.utils import ops as utils_ops
 from utils import label_map_util
 from utils import visualization_utils as vis_util
-from twitter_functions import *
+from Twitter.twitter_functions import *
+from Twitter import private
 
 
 # read in our csv from the twitter connection
 
-tweets = pd.read_csv(filepath_or_buffer='../Twitter/huracan.csv', converters={"Entities": JsonParser, "Extended Entities": JsonParser})
-
+tweets = check_for_hist("../Twitter/")
 
 col = ['Hashtags','urls','media_url']
-
-# create columns in col
 
 column_creator(tweets,col)
 
 # Download the photos into a folder for processing
-
 get_media(tweets)
 
 
 # What model to load
-MODEL_NAME = 'lambo_detection_graph/'
+MODEL_NAME = '../object_detection/lambo_detection_graph/'
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 PATH_TO_CKPT = MODEL_NAME + 'frozen_inference_graph.pb'
 
 # List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = os.path.join('data', 'lambo_detection.pbtxt')
+PATH_TO_LABELS = os.path.join('../object_detection/data', 'lambo_detection.pbtxt')
 
 # number of classes in pbtxt file
 NUM_CLASSES = 4
+
 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -97,7 +97,7 @@ with detection_graph.as_default():
             # Visualization of the results of a detection.
             detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
             num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-            threshold = 0.80
+            threshold = 0.8
 
             (boxes, scores, classes, num) = sess.run(
                                                     [detection_boxes,
@@ -105,19 +105,19 @@ with detection_graph.as_default():
                                                      detection_classes,
                                                      num_detections],
                                                      feed_dict={image_tensor: image_np_expanded})
-            # vis_util.visualize_boxes_and_labels_on_image_array(image=image_np,
-            #                                                    boxes = output_dict['detection_boxes'],
-            #                                                    classes = output_dict['detection_classes'],
-            #                                                    scores = output_dict['detection_scores'],
-            #                                                    category_index = category_index,
-            #                                                    instance_masks = output_dict.get('detection_masks'),
-            #                                                    min_score_thresh = threshold,
-            #                                                    use_normalized_coordinates=True,
-            #                                                    line_thickness=8)
+            vis_util.visualize_boxes_and_labels_on_image_array(image=image_np,
+                                                               boxes = output_dict['detection_boxes'],
+                                                               classes = output_dict['detection_classes'],
+                                                               scores = output_dict['detection_scores'],
+                                                               category_index = category_index,
+                                                               instance_masks = output_dict.get('detection_masks'),
+                                                               min_score_thresh = threshold,
+                                                               use_normalized_coordinates=True,
+                                                               line_thickness=8)
             for index, value in enumerate(classes[0]):
                 if scores[0, index] > threshold and (category_index.get(value)).get('name') == 'huracan':
                     to_tweet['to_tweet'].append(1)
-                    to_tweet['to_tweet_file'].append(image_path[14:])
+                    to_tweet['to_tweet_file'].append(image_path)
                     to_tweet['image_score'].append(scores[0][0])
                     # plt.figure(figsize=IMAGE_SIZE)
                     # plt.imshow(image_np)
@@ -125,9 +125,33 @@ with detection_graph.as_default():
 
 to_tweet = pd.DataFrame(data=to_tweet)
 
+pattern = '.+\/(\w.+)'
+try:
+    to_tweet['to_tweet_file'] = to_tweet['to_tweet_file'].str.extract(pattern)
+except:
+    pass
+
 tweets['post'] = tweets['image_name'].isin(to_tweet['to_tweet_file'])
 
+auth = tweepy.OAuthHandler(private.consumer_key, private.consumer_secret)
+auth.set_access_token(private.access_token, private.access_token_secret)
 
-# twitter_poster(tweets)
+api = tweepy.API(auth)
+status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini "
 
+for index,image in tweets.iterrows():
+    if image['post'] == True:
+        status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini " + image['urls']
+        tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
 
+if 'already_seen.csv' not in os.listdir("../Twitter/"):
+    print('creating new file')
+    tweets.to_csv("../Twitter/already_seen.csv")
+else:
+    print('appending to csv')
+    with open("../Twitter/already_seen.csv", 'a') as f:
+        tweets.to_csv(f, mode='a', header=False)
+
+for file in os.listdir("../images/"):
+        if file[-4:] == '.jpg':
+            os.remove("../images/" + file)

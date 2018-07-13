@@ -1,3 +1,5 @@
+#! /Users/brianosgood/.virtualenvs/huracan/bin/python
+
 def JsonParser(data):
     '''parser to parse JSON test correctly from loaded csv'''
     import json
@@ -10,8 +12,6 @@ def JsonParser(data):
     return j1
 
 def column_creator(tweets,col):
-    '''function to create columns from csv file json contents
-    '''
     for _ in col:
         tweets[_] = ""
         if _ == 'Hashtags':
@@ -41,25 +41,34 @@ def column_creator(tweets,col):
                 elif 'media' not in v['Entities'].keys():
                     tweets.at[i,_] = 'No ' + _
     pattern = '.+\/(\w.+)'
+    tweets['image_name'] = ''
     try:
         tweets['image_name'] = tweets['media_url'].str.extract(pattern)
     except:
         pass
 
 
+def check_for_hist(path):
+    import os
+    import pandas as pd
+    if 'already_seen.csv' not in os.listdir(path):
+        tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Entities":JsonParser,"Extended Entities":JsonParser})
+        return tweets
+    else:
+        already_seen = pd.read_csv("../Twitter/already_seen.csv", usecols=['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'])
+        new_tweets = pd.read_csv("../Twitter/huracan.csv") #read in our csv from the twitter connection
+        tweets = duplicate_drop(already_seen,new_tweets).reset_index(drop=True)
+        return tweets
+
+
 def get_media(tweets):
-    '''function to download photos to local directory for processing'''
     import wget
-    try:
-        for url in tweets['media_url']:
+    for url in tweets['media_url']:
+        try:
             if ".jpg" in url:
                 wget.download(url, out=f'../images/')
-    except:
-        return 'Something Went Wrong!'
-
-
-
-
+        except:
+            return f"something went wrong with {url}"
 
 
 
@@ -69,6 +78,16 @@ def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
     return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
 
+def duplicate_drop(df1,df2):
+    import pandas as pd
+    tweets = pd.concat([df1,df2])
+    tweets = tweets.drop_duplicates(keep=False)
+    tweets.reset_index(drop=True)
+    tweets['Entities'] = tweets['Entities'].map(lambda x: JsonParser(x))
+    tweets['Extended Entities'] = tweets['Extended Entities'].map(lambda x: JsonParser(x))
+    col = ['Hashtags','urls','media_url']
+    column_creator(tweets,col)
+    return tweets
 
 
 
@@ -123,7 +142,7 @@ def run_inference_for_single_image(image, graph):
 
 
 def twitter_poster(tweets):
-    import private
+    import Twitter.private
     import tweepy
     auth = tweepy.OAuthHandler(private.consumer_key, private.consumer_secret)
     auth.set_access_token(private.access_token, private.access_token_secret)
@@ -133,5 +152,5 @@ def twitter_poster(tweets):
     for index, image in tweets.iterrows():
         if image['post'] == True:
             status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini "
-            tweet_it = api.update_with_media(filename="./test_images/" + str(image['image_name']), status=status)
+            api.update_with_media(filename="./test_images/" + str(image['image_name']), status=status)
     return "Tweets posted"

@@ -1,3 +1,5 @@
+#! /Users/brianosgood/.virtualenvs/huracan/bin/python
+
 import settings
 import tweepy
 import sys
@@ -7,7 +9,7 @@ import csv
 class CustomStreamListener(tweepy.StreamListener):
 
     def on_status(self, status):
-        if hasattr(status,'retweeted_status') or status.author.screen_name == 'tf_and_huracans':
+        if hasattr(status,'retweeted_status') or status.author.screen_name == 'tf_and_huracans' or 'futbol' in status.author.screen_name:
             return True
         elif hasattr(status,'extended_tweet'):
             print(status.author.screen_name, status.created_at, status.text)
@@ -45,3 +47,4 @@ api = tweepy.API(auth,timeout=200)
 stream_listener = CustomStreamListener()
 stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
 stream.filter(track=settings.TRACK_TERMS, encoding='utf-8')
+
