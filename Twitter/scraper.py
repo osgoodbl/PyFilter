@@ -1,10 +1,9 @@
-#! /Users/brianosgood/.virtualenvs/huracan/bin/python
+#! /usr/bin/python3
 
 import settings
 import tweepy
 import sys
 import csv
-
 
 class CustomStreamListener(tweepy.StreamListener):
 
@@ -12,17 +11,17 @@ class CustomStreamListener(tweepy.StreamListener):
         if hasattr(status,'retweeted_status') or status.author.screen_name == 'tf_and_huracans' or 'futbol' in status.author.screen_name:
             return True
         elif hasattr(status,'extended_tweet'):
-            print(status.author.screen_name, status.created_at, status.text)
+            print(str(status.author.screen_name), str(status.created_at), str(status.text))
             # Writing status data
             with open('huracan.csv', 'a') as f:
                 writer = csv.writer(f, delimiter = str(","))
-                writer.writerow([status.author.screen_name, status.id_str, status.created_at, str(status.text), str(status.entities), str(status.extended_tweet)])
+                writer.writerow([status.author.screen_name, status.id_str, status.created_at, status.text, status.entities, status.extended_tweet])
         else:
             print(status.author.screen_name, status.created_at, status.text)
             # Writing status data
             with open('huracan.csv', 'a') as f:
-                writer = csv.writer(f, delimiter = str(","))
-                writer.writerow([status.author.screen_name, status.id_str, status.created_at, str(status.text), str(status.entities), {"No Extended Entities":"Empty"} ])
+                writer = csv.writer(f, delimiter = str(","),)
+                writer.writerow([status.author.screen_name, status.id_str, status.created_at, status.text, status.entities, {"No Extended Entities":"Empty"} ])
 
     def on_error(self, status_code):
         print >> sys.stderr, 'Encountered error with status code:', status_code

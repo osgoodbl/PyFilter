@@ -1,9 +1,5 @@
 # PyFilter
 
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">beep boop I&#39;m an Image recognition Bot <a href="https://twitter.com/hashtag/Huracan?src=hash&amp;ref_src=twsrc%5Etfw">#Huracan</a> <a href="https://twitter.com/hashtag/Lamborghini?src=hash&amp;ref_src=twsrc%5Etfw">#Lamborghini</a> <a href="https://t.co/ZQVQwPcpUB">pic.twitter.com/ZQVQwPcpUB</a></p>&mdash; TensorFlow and Huracáns (@tf_and_huracans) <a href="https://twitter.com/tf_and_huracans/status/1016917233275031553?ref_src=twsrc%5Etfw">July 11, 2018</a></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-
 ![Object Detection](https://pbs.twimg.com/profile_banners/1016789079566921728/1531262895/1500x500 "Object Detection")[@tf_and_huracans](https://twitter.com/tf_and_huracans)
 
 The inspiration for this project was actually from my instagram as I follow #Lamborghini, #Huracán and a couple others. I noticed that a lot of the photos tagged with those hashtags didn't actually feature the item I wanted to see. So I thought maybe I could make an image object detector to filter posts on social media that incorrectly use hashtags on a photo to gain a wider audience even if the photo is unrelated to the hashtag.
@@ -22,6 +18,8 @@ If you want to see how Tweepy can follow Tweets, and how I loaded the resulting 
 
 
 # TensorFlow Object Detection and Tweepy
+
+`pip install tweepy`
 
 ## Tweepy
 This package was tricky, the documentation is spread out over stackoverflow and
@@ -57,4 +55,24 @@ def JsonParser(data):
     ```
 This enabled me to properly call out sub dictionaries in a column and create new columns with the values I wanted.
 
-Once I had the csv loaded in and cleaned, I was able to download the photos in each post and pass them into my trained model
+Once I had the csv loaded in and cleaned, I was able to download the photos in each post and pass them into my trained model with a pseudo pipeline code structure.
+
+## TensorFlow
+
+The next challenge was processing the downloaded photos and returning only the photos that are above a certain confidence value. TensorFlow generates dictionaries of arrays with and individual score for each pixel and then returns the score for that image. Parsing out the class, score and image name allowed for me to generate a dataframe that can be cross referenced with the Twitter data to mark a Tweet at "okay to post" or "ignore".
+
+## posting with Tweepy
+
+Creating a Tweet with Tweepy was very straight forward and has lots of options. I chose the update_status_with_media to post a photo along with a comment.
+
+# Moving to production
+
+As I stated at the beginning, I used DigitalOcean. The "droplet" or instance on their server runs Ubuntu, without my virtual environment. Using `pip freeze` I could generate a requirements.txt file to tell the droplet what packages to install. However, there are still some system level packages that are not pip installed directly.
+
+This proved challenging and was remedied after many `pip3 installs`.
+
+# The future of PyFilter
+
+* I plan on expanding out to the rest of the Lamborghini family of vehicles
+* Metrics on the specific tweets I pull in (who gets mentioned the most, other hashtags used with the post)
+* Sentiment analysis 

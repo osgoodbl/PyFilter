@@ -1,4 +1,4 @@
-#! /Users/brianosgood/.virtualenvs/huracan/bin/python
+#! /usr/bin/python3
 
 def JsonParser(data):
     '''parser to parse JSON test correctly from loaded csv'''
@@ -40,6 +40,7 @@ def column_creator(tweets,col):
                         tweets.at[i,_] = 'No ' + _
                 elif 'media' not in v['Entities'].keys():
                     tweets.at[i,_] = 'No ' + _
+                    
     pattern = '.+\/(\w.+)'
     tweets['image_name'] = ''
     try:
@@ -66,9 +67,9 @@ def get_media(tweets):
     for url in tweets['media_url']:
         try:
             if ".jpg" in url:
-                wget.download(url, out=f'../images/')
+                wget.download(url, out='../images/')
         except:
-            return f"something went wrong with {url}"
+            return ("something went wrong with {}".format(url))
 
 
 
@@ -81,12 +82,10 @@ def load_image_into_numpy_array(image):
 def duplicate_drop(df1,df2):
     import pandas as pd
     tweets = pd.concat([df1,df2])
-    tweets = tweets.drop_duplicates(keep=False)
-    tweets.reset_index(drop=True)
+    tweets = tweets.drop_duplicates(subset=['Id'],keep=False)
+    tweets.reset_index(drop=True, inplace=True)
     tweets['Entities'] = tweets['Entities'].map(lambda x: JsonParser(x))
     tweets['Extended Entities'] = tweets['Extended Entities'].map(lambda x: JsonParser(x))
-    col = ['Hashtags','urls','media_url']
-    column_creator(tweets,col)
     return tweets
 
 
