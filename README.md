@@ -52,7 +52,9 @@ def JsonParser(data):
         data = json.dumps(ast.literal_eval(data))
         j1 = json.loads(data)
     return j1
-    ```
+```
+
+
 This enabled me to properly call out sub dictionaries in a column and create new columns with the values I wanted.
 
 Once I had the csv loaded in and cleaned, I was able to download the photos in each post and pass them into my trained model with a pseudo pipeline code structure.
@@ -75,4 +77,4 @@ This proved challenging and was remedied after many `pip3 installs`.
 
 * I plan on expanding out to the rest of the Lamborghini family of vehicles
 * Metrics on the specific tweets I pull in (who gets mentioned the most, other hashtags used with the post)
-* Sentiment analysis 
+* Sentiment analysis
