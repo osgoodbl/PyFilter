@@ -24,11 +24,11 @@ from Twitter import private
 
 # read in our csv from the twitter connection
 
-tweets = check_for_hist("../Twitter/")
+tweets = check_for_hist("../Twitter/") # check_for_hist function looks to see if there are any duplicated tweets
 
-col = ['Hashtags','urls','media_url_https','external_url']
+col = ['Hashtags','urls','media_url_https','external_url'] # columns to create through column_creator function
 
-column_creator(tweets,col)
+column_creator(tweets,col) # creating columns
 
 # Download the photos into a folder for processing
 get_media(tweets)
@@ -45,8 +45,8 @@ PATH_TO_LABELS = os.path.join('../object_detection/data', 'lambo_detection.pbtxt
 
 # number of classes in pbtxt file
 NUM_CLASSES = 4
-
-
+ 
+# instantiate Tensorflow graph
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
@@ -55,28 +55,28 @@ with detection_graph.as_default():
         od_graph_def.ParseFromString(serialized_graph)
         tf.import_graph_def(od_graph_def, name='')
 
-
+# create labels mapping
 label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 
-
+# path for downloaded images location
 PATH_TO_TEST_IMAGES_DIR = '../images/' # set path of where photos were downloaded to
 
 photos = os.listdir(path=PATH_TO_TEST_IMAGES_DIR) # create list of files in folder
 
-# create
+# create path for each image
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, '{}.jpg'.format(i[:-4])) for i in photos if i[-4:] == '.jpg']
 
 # Size, in inches, of the output images.
 IMAGE_SIZE = (12, 12)
 
-
+# Dictionary to append photo values to 
 to_tweet = {'to_tweet':[],
             'to_tweet_file':[],
             'image_score':[],
            }
-
+#running object detection and choosing to post
 with detection_graph.as_default():
     with tf.Session(graph=detection_graph) as sess:
         # Definite input and output Tensors for detection_graph
@@ -109,15 +109,18 @@ with detection_graph.as_default():
                                                      detection_classes,
                                                      num_detections],
                                                      feed_dict={image_tensor: image_np_expanded})
-            vis_util.visualize_boxes_and_labels_on_image_array(image=image_np,
-                                                               boxes = output_dict['detection_boxes'],
-                                                               classes = output_dict['detection_classes'],
-                                                               scores = output_dict['detection_scores'],
-                                                               category_index = category_index,
-                                                               instance_masks = output_dict.get('detection_masks'),
-                                                               min_score_thresh = threshold,
-                                                               use_normalized_coordinates=True,
-                                                               line_thickness=8)
+#'''Uncomment below in a jupyter notebook to view image bounding boxes'''
+#            vis_util.visualize_boxes_and_labels_on_image_array(image=image_np,
+#                                                               boxes = output_dict['detection_boxes'],
+#                                                               classes = output_dict['detection_classes'],
+#                                                               scores = output_dict['detection_scores'],
+#                                                               category_index = category_index,
+#                                                               instance_masks = output_dict.get('detection_masks'),
+#                                                               min_score_thresh = threshold,
+#                                                               use_normalized_coordinates=True,
+#                                                               line_thickness=8)
+            ### This is where I can add in functionality for other cars, need to figure out how to make a new
+            ### Column name for each car with a post value
             for index, value in enumerate(classes[0]):
                 if scores[0, index] > threshold and (category_index.get(value)).get('name') == 'huracan':
                     to_tweet['to_tweet'].append(1)
@@ -126,17 +129,21 @@ with detection_graph.as_default():
                     # plt.figure(figsize=IMAGE_SIZE)
                     # plt.imshow(image_np)
 
-
+# create dataframe from dictionary
 to_tweet = pd.DataFrame(data=to_tweet)
 
+# extract file name from file url to compare if file is in main tweets dataframe
 pattern = '.+\/(\w.+)'
 try:
     to_tweet['to_tweet_file'] = to_tweet['to_tweet_file'].str.extract(pattern)
 except:
     pass
 
+# checking to see if to_tweet_file is in tweets['image_name'] if it is, then set post column value to True at that spot
 tweets['post'] = tweets['image_name'].isin(to_tweet['to_tweet_file'])
 
+
+# Tweepy code block, instantiates API connection, writes status and posts photo if photo was marked True
 auth = tweepy.OAuthHandler(private.consumer_key, private.consumer_secret)
 auth.set_access_token(private.access_token, private.access_token_secret)
 
@@ -148,33 +155,42 @@ for index,image in tweets.iterrows():
         status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini " + image['urls']
         tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
 
+        
+# checking if this is a first run, if it is, create csv called 'already_seen'
 if 'already_seen.csv' not in os.listdir("../Twitter/"):
     print('creating new file')
     tweets.to_csv("../Twitter/already_seen.csv",)
-else:
+    
+
+    
+else: # if not first run, then append to csv 'already_seen'
     print('appending to csv')
     with open("../Twitter/already_seen.csv", 'a') as f:
         tweets.to_csv(f, mode='a', header=False,)
-        
-    tweets.drop(labels = ['Entities'],axis=1,inplace=True)
-        
-    tweets.drop(labels=['Extended Entities'],axis=1,inplace=True)
 
-    tweets['Date'] = tweets['Date'].astype(str) #write PST datetime to string so it can be appended to Google Sheets
+# pygspread connection:
+# connection to google sheets, drop Entities and Extended Entities, convert Dates to string and append columns to google sheet
+tweets.drop(labels = ['Entities'],axis=1,inplace=True)
 
-    scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+tweets.drop(labels=['Extended Entities'],axis=1,inplace=True)
 
-    credentials = ServiceAccountCredentials.from_json_keyfile_name('./PyFilter-34d3cda723bf.json',scope)
+tweets['Date'] = tweets['Date'].astype(str) #write PST datetime to string so it can be appended to Google Sheets
 
-    gc = gspread.authorize(credentials)
+scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
 
-    ws = gc.open("PyFilter").worksheet("Twitter_Data") #open google sheet and worksheet
-    existing = gd.get_as_dataframe(worksheet=ws) #get worksheet as dataframe
-    updated = existing.append(tweets, ignore_index=False,sort=False)
+credentials = ServiceAccountCredentials.from_json_keyfile_name('./PyFilter-34d3cda723bf.json',scope)
 
-    gd.set_with_dataframe(ws,updated,resize=True)
-    print('appended to google sheet')
+gc = gspread.authorize(credentials)
 
+ws = gc.open("PyFilter").worksheet("Twitter_Data") #open google sheet and worksheet
+existing = gd.get_as_dataframe(worksheet=ws) #get worksheet as dataframe
+updated = existing.append(tweets, ignore_index=False,sort=False)
+
+gd.set_with_dataframe(ws,updated,resize=True)
+print('appended to google sheet')
+
+
+# delete photos that have been downloaded
 for file in os.listdir("../images/"):
         if file[-4:] == '.jpg':
             os.remove("../images/" + file)
