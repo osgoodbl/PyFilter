@@ -3,7 +3,12 @@
 import settings
 import tweepy
 import sys
-import csv
+import unicodecsv as csv
+
+import settings
+import tweepy
+import sys
+import unicodecsv as csv
 
 class CustomStreamListener(tweepy.StreamListener):
 
@@ -11,17 +16,17 @@ class CustomStreamListener(tweepy.StreamListener):
         if hasattr(status,'retweeted_status') or status.author.screen_name == 'tf_and_huracans' or 'futbol' in status.author.screen_name:
             return True
         elif hasattr(status,'extended_tweet'):
-            print(str(status.author.screen_name), str(status.created_at), str(status.text))
+            print(str(status.user.name), str(status.created_at))
             # Writing status data
-            with open('huracan.csv', 'a') as f:
-                writer = csv.writer(f, delimiter = str(","))
-                writer.writerow([status.author.screen_name, status.id_str, status.created_at, status.text, status.entities, status.extended_tweet])
+            with open('huracan.csv', 'ab') as f:
+                writer = csv.writer(f)
+                writer.writerow([str(status.author.screen_name), str(status.id_str), str(status.created_at), str(status.text), str(status.entities), str(status.extended_tweet)])
         else:
-            print(status.author.screen_name, status.created_at, status.text)
+            print(str(status.user.name), str(status.created_at))
             # Writing status data
-            with open('huracan.csv', 'a') as f:
-                writer = csv.writer(f, delimiter = str(","),)
-                writer.writerow([status.author.screen_name, status.id_str, status.created_at, status.text, status.entities, {"No Extended Entities":"Empty"} ])
+            with open('huracan.csv', 'ab') as f:
+                writer = csv.writer(f)
+                writer.writerow([str(status.author.screen_name), str(status.id_str), str(status.created_at), str(status.text), str(status.entities), str({"No Extended Entities":"Empty"}) ])
 
     def on_error(self, status_code):
         print >> sys.stderr, 'Encountered error with status code:', status_code
@@ -32,10 +37,8 @@ class CustomStreamListener(tweepy.StreamListener):
         return True  # Don't kill the stream
 
     # Writing csv titles
-
-
-with open('huracan.csv', 'w') as f:
-    writer = csv.writer(f, delimiter = str(","))
+with open('huracan.csv', 'wb') as f:
+    writer = csv.writer(f)
     writer.writerow(['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'])
 
 
@@ -45,5 +48,4 @@ api = tweepy.API(auth,timeout=200)
 
 stream_listener = CustomStreamListener()
 stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
-stream.filter(track=settings.TRACK_TERMS, encoding='utf-8')
-
+stream.filter(track=settings.TRACK_TERMS,)

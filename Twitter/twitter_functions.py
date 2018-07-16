@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 def JsonParser(data):
-    '''parser to parse JSON test correctly from loaded csv'''
+    '''parser to parse JSON text correctly from loaded csv'''
     import json
     import ast
     if data == "":
@@ -11,9 +11,30 @@ def JsonParser(data):
         j1 = json.loads(data)
     return j1
 
+def herpderp():
+    return('You imported the correct module')
+
+def tz_convert(data):
+    import pandas as pd
+    data = pd.to_datetime(data).tz_localize('utc').tz_convert('US/Pacific').tz_localize(None)
+    return data
+
+def check_for_hist(path):
+    import os
+    import pandas as pd
+    if 'already_seen.csv' not in os.listdir(path):
+        tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser})
+        return tweets
+    else:
+        already_seen = pd.read_csv("../Twitter/already_seen.csv", usecols=['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'], converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser})
+        new_tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser}) #read in our csv from the twitter connection
+        tweets = duplicate_drop(already_seen,new_tweets).reset_index(drop=True)
+        return tweets
+
 def column_creator(tweets,col):
-    for _ in col:
-        tweets[_] = ""
+    '''function to create and populate specified columns in dataframe'''
+    for _ in col: 
+        tweets[_] =''
         if _ == 'Hashtags':
             for i,v in tweets.iterrows():
                 hashes = []
@@ -23,48 +44,44 @@ def column_creator(tweets,col):
                 if 'hashtags' not in v['Entities']:
                     hashes.append('No ' + _ )
                 tweets.at[i,_] = hashes
-        elif _ == 'urls':
-            for i,v in tweets.iterrows():
-                for tag in v['Entities'].get(_):
-                    tweets.at[i,'urls'] = tag['url']
-                if _ not in v['Entities']:
-                    tweets.at[i,'urls'] = 'No '+ _
-        elif _ == 'media_url':
+                    
+        elif _ == 'media_url_https':
             for i,v in tweets.iterrows():
                 if 'media'in v['Entities'].keys():
-                    tweets.at[i,_] = (v['Entities']['media'][0][_])
+                    tweets.at[i,_] = str(v['Entities']['media'][0][_])
                 elif 'entities' in v['Extended Entities'].keys():
                     if 'media' in v['Extended Entities']['entities'].keys():
-                        tweets.at[i,_] = (v['Extended Entities']['entities']['media'][0][_])
+                        tweets.at[i,_] = str(v['Extended Entities']['entities']['media'][0]['media_url_https'])
                     elif 'media' not in v['Extended Entities']['entities'].keys():
                         tweets.at[i,_] = 'No ' + _
                 elif 'media' not in v['Entities'].keys():
                     tweets.at[i,_] = 'No ' + _
                     
+        elif _ == 'urls':
+            for i,v in tweets.iterrows():
+                tweets.at[i,_] = "https://twitter.com/{}/status/{}".format(tweets.at[i,'Author'],tweets.at[i,'Id'])
+                
+        elif _ == 'external_url':
+            for i,v in tweets.iterrows():
+                if 'urls' in v['Entities'].keys():
+                    if len(v['Entities']['urls']) > 0:
+                        tweets.at[i,_] = (v['Entities']['urls'][0]['expanded_url'])
+                elif 'urls' in v['Entities'].keys():
+                    if len(v['Entities']['urls']) < 0:
+                        tweets.at[i,_] = v['Entities']['urls']
+
+                    
+                    
     pattern = '.+\/(\w.+)'
     tweets['image_name'] = ''
     try:
-        tweets['image_name'] = tweets['media_url'].str.extract(pattern)
+        tweets['image_name'] = tweets['media_url_https'].str.extract(pattern)
     except:
         pass
 
-
-def check_for_hist(path):
-    import os
-    import pandas as pd
-    if 'already_seen.csv' not in os.listdir(path):
-        tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Entities":JsonParser,"Extended Entities":JsonParser})
-        return tweets
-    else:
-        already_seen = pd.read_csv("../Twitter/already_seen.csv", usecols=['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'])
-        new_tweets = pd.read_csv("../Twitter/huracan.csv") #read in our csv from the twitter connection
-        tweets = duplicate_drop(already_seen,new_tweets).reset_index(drop=True)
-        return tweets
-
-
 def get_media(tweets):
     import wget
-    for url in tweets['media_url']:
+    for url in tweets['media_url_https']:
         try:
             if ".jpg" in url:
                 wget.download(url, out='../images/')
@@ -84,8 +101,6 @@ def duplicate_drop(df1,df2):
     tweets = pd.concat([df1,df2])
     tweets = tweets.drop_duplicates(subset=['Id'],keep=False)
     tweets.reset_index(drop=True, inplace=True)
-    tweets['Entities'] = tweets['Entities'].map(lambda x: JsonParser(x))
-    tweets['Extended Entities'] = tweets['Extended Entities'].map(lambda x: JsonParser(x))
     return tweets
 
 
@@ -93,6 +108,9 @@ def duplicate_drop(df1,df2):
 def run_inference_for_single_image(image, graph):
   import numpy as np
   import tensorflow as tf
+  from object_detection.utils import ops as utils_ops
+  from utils import label_map_util
+  from utils import visualization_utils as vis_util
   with graph.as_default():
     with tf.Session() as sess:
       # Get handles to input and output tensors

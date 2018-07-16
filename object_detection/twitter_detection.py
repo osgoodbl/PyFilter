@@ -10,6 +10,9 @@ from PIL import Image
 from pandas import DataFrame
 from pandas.io.parsers import TextFileReader
 import subprocess
+import gspread_dataframe as gd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 sys.path.append("..")
 from object_detection.utils import ops as utils_ops
 from utils import label_map_util
@@ -18,11 +21,12 @@ from Twitter.twitter_functions import *
 from Twitter import private
 
 
+
 # read in our csv from the twitter connection
 
 tweets = check_for_hist("../Twitter/")
 
-col = ['Hashtags','urls','media_url']
+col = ['Hashtags','urls','media_url_https','external_url']
 
 column_creator(tweets,col)
 
@@ -146,11 +150,30 @@ for index,image in tweets.iterrows():
 
 if 'already_seen.csv' not in os.listdir("../Twitter/"):
     print('creating new file')
-    tweets.to_csv("../Twitter/already_seen.csv")
+    tweets.to_csv("../Twitter/already_seen.csv",)
 else:
     print('appending to csv')
     with open("../Twitter/already_seen.csv", 'a') as f:
-        tweets.to_csv(f, mode='a', header=False)
+        tweets.to_csv(f, mode='a', header=False,)
+        
+    tweets.drop(labels = ['Entities'],axis=1,inplace=True)
+        
+    tweets.drop(labels=['Extended Entities'],axis=1,inplace=True)
+
+    tweets['Date'] = tweets['Date'].astype(str) #write PST datetime to string so it can be appended to Google Sheets
+
+    scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+
+    credentials = ServiceAccountCredentials.from_json_keyfile_name('./PyFilter-34d3cda723bf.json',scope)
+
+    gc = gspread.authorize(credentials)
+
+    ws = gc.open("PyFilter").worksheet("Twitter_Data") #open google sheet and worksheet
+    existing = gd.get_as_dataframe(worksheet=ws) #get worksheet as dataframe
+    updated = existing.append(tweets, ignore_index=False,sort=False)
+
+    gd.set_with_dataframe(ws,updated,resize=True)
+    print('appended to google sheet')
 
 for file in os.listdir("../images/"):
         if file[-4:] == '.jpg':

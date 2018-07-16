@@ -63,7 +63,7 @@ Once I had the csv loaded in and cleaned, I was able to download the photos in e
 
 The next challenge was processing the downloaded photos and returning only the photos that are above a certain confidence value. TensorFlow generates dictionaries of arrays with and individual score for each pixel and then returns the score for that image. Parsing out the class, score and image name allowed for me to generate a dataframe that can be cross referenced with the Twitter data to mark a Tweet at "okay to post" or "ignore".
 
-## posting with Tweepy
+## Posting with Tweepy
 
 Creating a Tweet with Tweepy was very straight forward and has lots of options. I chose the update_status_with_media to post a photo along with a comment.
 
