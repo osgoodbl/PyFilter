@@ -1,8 +1,8 @@
 # PyFilter
 
-![Object Detection](https://pbs.twimg.com/profile_banners/1016789079566921728/1531262895/1500x500 "Object Detection")[@tf_and_huracans](https://twitter.com/tf_and_huracans)
+![Object Detection](https://pbs.twimg.com/profile_banners/1016789079566921728/1531262895/1500x500 "Object Detection")[@tf_and_lambos](https://twitter.com/tf_and_lambos)
 
-The inspiration for this project was actually from my instagram as I follow #Lamborghini, #Huracán and a couple others. I noticed that a lot of the photos tagged with those hashtags didn't actually feature the item I wanted to see. So I thought maybe I could make an image object detector to filter posts on social media that incorrectly use hashtags on a photo to gain a wider audience even if the photo is unrelated to the hashtag.
+The inspiration for this project was actually from my instagram as I follow #Lamborghini, #Huracán and a couple other hashtags. I noticed that a lot of the photos tagged with those hashtags didn't actually feature the item I wanted to see. So I thought maybe I could make an image object detector to filter posts on social media that incorrectly use hashtags on a photo to gain a wider audience even if the photo is unrelated to the hashtag.
 
 # Project Files
 
@@ -61,7 +61,7 @@ Once I had the csv loaded in and cleaned, I was able to download the photos in e
 
 ## TensorFlow
 
-The next challenge was processing the downloaded photos and returning only the photos that are above a certain confidence value. TensorFlow generates dictionaries of arrays with and individual score for each pixel and then returns the score for that image. Parsing out the class, score and image name allowed for me to generate a dataframe that can be cross referenced with the Twitter data to mark a Tweet at "okay to post" or "ignore".
+The next challenge was processing the downloaded photos and returning only the photos that are above a certain confidence value. Using ssd_mobilenet_v1_coco_2018_01_28 with TensorFlow, the images are processed quickly. Post processing generates dictionaries of arrays with an individual score for each pixel and then returns the whole score for that image. Parsing out the class, score and image name allowed for me to generate a dataframe that can be cross referenced with the Twitter data to mark a Tweet at "okay to post" or "ignore".
 
 ## Posting with Tweepy
 
@@ -79,4 +79,14 @@ This proved challenging and was remedied after many `pip3 installs`.
 * Metrics on the specific tweets I pull in (who gets mentioned the most, other hashtags used with the post)
 * Sentiment analysis
 * Instagram connection
-* 
+# Resources:
+
+slides:['PyFilter Presentation'](https://docs.google.com/presentation/d/18qpbjyiS_k5-6ccuQr7dnobMsWEgFSdQf-_H4qA07Cs/edit?usp=sharing)
+
+data dashboard: [DataStudio](https://datastudio.google.com/open/1pLVzUKUWiWU2NKn15vG9SoWRnf6-ERop)
+
+guidance:
+* [TensorFlow](https://www.tensorflow.org/)
+* [Python Programming](https://pythonprogramming.net/introduction-use-tensorflow-object-detection-api-tutorial/)
+
+* [COCO Dataset Model]

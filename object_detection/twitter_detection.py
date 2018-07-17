@@ -24,7 +24,7 @@ from Twitter import private
 
 # read in our csv from the twitter connection
 
-tweets = check_for_hist("../Twitter/") # check_for_hist function looks to see if there are any duplicated tweets
+tweets = check_for_hist("../Twitter/") # check_for_hist function looks to see if there are any tweets that have already been seen
 
 col = ['Hashtags','urls','media_url_https','external_url'] # columns to create through column_creator function
 
@@ -75,6 +75,7 @@ IMAGE_SIZE = (12, 12)
 to_tweet = {'to_tweet':[],
             'to_tweet_file':[],
             'image_score':[],
+            'car_type':[],
            }
 #running object detection and choosing to post
 with detection_graph.as_default():
@@ -119,28 +120,57 @@ with detection_graph.as_default():
 #                                                               min_score_thresh = threshold,
 #                                                               use_normalized_coordinates=True,
 #                                                               line_thickness=8)
-            ### This is where I can add in functionality for other cars, need to figure out how to make a new
-            ### Column name for each car with a post value
             for index, value in enumerate(classes[0]):
                 if scores[0, index] > threshold and (category_index.get(value)).get('name') == 'huracan':
                     to_tweet['to_tweet'].append(1)
                     to_tweet['to_tweet_file'].append(image_path)
                     to_tweet['image_score'].append(scores[0][0])
-                    # plt.figure(figsize=IMAGE_SIZE)
-                    # plt.imshow(image_np)
+                    to_tweet['car_type'].append('huracan')
+#                     plt.figure(figsize=IMAGE_SIZE)
+#                     plt.imshow(image_np)
+                elif scores[0, index] > 0.8 and (category_index.get(value)).get('name') == 'aventador':
+                    to_tweet['to_tweet'].append(1)
+                    to_tweet['to_tweet_file'].append(image_path)
+                    to_tweet['image_score'].append(scores[0][0])
+                    to_tweet['car_type'].append('aventador')
+#                     plt.figure(figsize=IMAGE_SIZE)
+#                     plt.imshow(image_np)
+                elif scores[0, index] > 0.98 and (category_index.get(value)).get('name') == 'gallardo':
+                    to_tweet['to_tweet'].append(1)
+                    to_tweet['to_tweet_file'].append(image_path)
+                    to_tweet['image_score'].append(scores[0][0])
+                    to_tweet['car_type'].append('gallardo')
+#                     plt.figure(figsize=IMAGE_SIZE)
+#                     plt.imshow(image_np)
+                elif scores[0, index] > 0.98 and (category_index.get(value)).get('name') == 'murcielago':
+                    to_tweet['to_tweet'].append(1)
+                    to_tweet['to_tweet_file'].append(image_path)
+                    to_tweet['image_score'].append(scores[0][0])
+                    to_tweet['car_type'].append('murcielago')
+#                     plt.figure(figsize=IMAGE_SIZE)
+#                     plt.imshow(image_np)
+                else:
+                    pass
 
 # create dataframe from dictionary
 to_tweet = pd.DataFrame(data=to_tweet)
 
-# extract file name from file url to compare if file is in main tweets dataframe
+# # extract file name from file url to compare if file is in main tweets dataframe
 pattern = '.+\/(\w.+)'
 try:
-    to_tweet['to_tweet_file'] = to_tweet['to_tweet_file'].str.extract(pattern)
+    to_tweet['image_name'] = to_tweet['to_tweet_file'].str.extract(pattern)
 except:
-    pass
+    to_tweet['image_name'] = ""
 
 # checking to see if to_tweet_file is in tweets['image_name'] if it is, then set post column value to True at that spot
-tweets['post'] = tweets['image_name'].isin(to_tweet['to_tweet_file'])
+tweets['post'] = tweets['image_name'].isin(to_tweet['image_name'])
+tweets['car_type'] = ""
+tweets['image_score'] = ""
+for i,x in tweets.iterrows():
+    for j,y in to_tweet.iterrows():
+        if y['image_name'] == x['image_name']:
+            tweets.at[i,'car_type'] = y['car_type']
+            tweets.at[i,'image_score'] = y['image_score']
 
 
 # Tweepy code block, instantiates API connection, writes status and posts photo if photo was marked True
@@ -151,9 +181,24 @@ api = tweepy.API(auth)
 status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini "
 
 for index,image in tweets.iterrows():
-    if image['post'] == True:
-        status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini " + image['urls']
+    if image['car_type'] == 'huracan':
+        status = ( "With a {}% Confidence, I think there is a Huracan in this photo #Huracan #Lamborghini ".format(round(100*image['image_score'],3)) + image['urls'])
+#         print(status)
         tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
+    elif image['car_type'] == 'aventador':
+        status = ( "With a {}% Confidence, I think there is a Aventador in this photo #Aventador #Lamborghini ".format(round(100*image['image_score'],3)) + image['urls'])
+#         print(status)
+        tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
+    elif image['car_type'] == 'gallardo':
+        status = ( "With a {}% Confidence, I think there is a Gallardo in this photo #Gallardo #Lamborghini ".format(round(100*image['image_score'],3)) + image['urls'])
+#         print(status)
+        tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
+    elif image['car_type'] == 'murcielago':
+        status = ( "With a {}% Confidence, I think there is a Murcielago in this photo #Murcielago #Lamborghini  ".format(round(100*image['image_score'],3)) + image['urls'])
+#         print(status)
+        tweet_it = api.update_with_media(filename="../images/"+str(image['image_name']),status= status)
+    else:
+        pass
 
         
 # checking if this is a first run, if it is, create csv called 'already_seen'

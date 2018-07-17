@@ -10,7 +10,7 @@ import unicodecsv as csv
 
 class CustomStreamListener(tweepy.StreamListener):
 
-    def on_status(self, status): # if tweet is a retweet, contains my name or has futbol it in, skip the tweet
+    def on_status(self, status): # if tweet is a retweet, contains my name or has futbol it in, skip
         if hasattr(status,'retweeted_status') or status.author.screen_name == 'tf_and_huracans' or 'futbol' in status.author.screen_name:
             return True
         elif hasattr(status,'extended_tweet'): #if tweet has "extended_tweet" attribute, process "extended_tweet" 
@@ -35,7 +35,6 @@ class CustomStreamListener(tweepy.StreamListener):
         return True  # Don't kill the stream
 
     # Writing csv titles
-    # This creates and writes headers to a csv file
 with open('huracan.csv', 'wb') as f:
     writer = csv.writer(f)
     writer.writerow(['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'])
@@ -45,7 +44,6 @@ auth = tweepy.OAuthHandler(settings.consumer_key, settings.consumer_secret)
 auth.set_access_token(settings.access_token, settings.access_token_secret)
 api = tweepy.API(auth,timeout=200)
 
-# instantiate the Twitter Stream API Listener
 stream_listener = CustomStreamListener()
 stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
 stream.filter(track=settings.TRACK_TERMS,)
