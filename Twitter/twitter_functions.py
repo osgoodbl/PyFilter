@@ -11,6 +11,11 @@ def JsonParser(data):
         j1 = json.loads(data)
     return j1
 
+def try_parse(x):
+    try:
+        return JsonParser(x)
+    except:
+        pass
 
 def tz_convert(data):
     import pandas as pd
@@ -20,13 +25,18 @@ def tz_convert(data):
 def check_for_hist(path):
     import os
     import pandas as pd
-    if 'already_seen.csv' not in os.listdir(path):
-        tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser})
+    import sqlite3
+    if 'hist_tweets.db' not in os.listdir(path):
+        tweets = pd.read_sql_query("SELECT * FROM tweets;", sqlite3.connect("../Twitter/tweets.db"))
+        tweets['Extended_Entities'] = tweets['Extended_Entities'].map(lambda x: try_parse(x))
+        tweets['Entities'] = tweets['Entities'].map(lambda x: try_parse(x))
         return tweets
     else:
-        already_seen = pd.read_csv("../Twitter/already_seen.csv", usecols=['Author', 'Id', 'Date', 'Text', 'Entities', 'Extended Entities'], converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser})
-        new_tweets = pd.read_csv("../Twitter/huracan.csv",converters={"Date": tz_convert,"Entities":JsonParser,"Extended Entities":JsonParser}) #read in our csv from the twitter connection
+        already_seen = pd.read_sql_query("SELECT Date,Entities,Extended_Entities,Id_str,Author, Text FROM hist_tweets;", sqlite3.connect("../Twitter/hist_tweets.db")) 
+        new_tweets = pd.read_sql_query("SELECT Date,Entities,Extended_Entities,Id_str,Author, Text FROM tweets;", sqlite3.connect("../Twitter/tweets.db"))
         tweets = duplicate_drop(already_seen,new_tweets).reset_index(drop=True)
+        tweets['Extended_Entities'] = tweets['Extended_Entities'].map(lambda x: try_parse(x))
+        tweets['Entities'] = tweets['Entities'].map(lambda x: try_parse(x))
         return tweets
 
 def column_creator(tweets,col): # can definitely clean this up, hardest part is iterating through the different cases for each tweet
@@ -47,26 +57,25 @@ def column_creator(tweets,col): # can definitely clean this up, hardest part is 
             for i,v in tweets.iterrows():
                 if 'media'in v['Entities'].keys():
                     tweets.at[i,_] = str(v['Entities']['media'][0][_])
-                elif 'entities' in v['Extended Entities'].keys():
-                    if 'media' in v['Extended Entities']['entities'].keys():
-                        tweets.at[i,_] = str(v['Extended Entities']['entities']['media'][0]['media_url_https'])
-                    elif 'media' not in v['Extended Entities']['entities'].keys():
+                elif 'entities' in v['Extended_Entities'].keys():
+                    if 'media' in v['Extended_Entities']['entities'].keys():
+                        tweets.at[i,_] = str(v['Extended_Entities']['entities']['media'][0]['media_url_https'])
+                    elif 'media' not in v['Extended_Entities']['entities'].keys():
                         tweets.at[i,_] = 'No ' + _
                 elif 'media' not in v['Entities'].keys():
                     tweets.at[i,_] = 'No ' + _
                     
         elif _ == 'urls':
             for i,v in tweets.iterrows():
-                tweets.at[i,_] = "https://twitter.com/{}/status/{}".format(tweets.at[i,'Author'],tweets.at[i,'Id'])
+                tweets.at[i,_] = "https://twitter.com/{}/status/{}".format(tweets.at[i,'Author'],tweets.at[i,'Id_str'])
                 
         elif _ == 'external_url':
             for i,v in tweets.iterrows():
-                if 'urls' in v['Entities'].keys():
-                    if len(v['Entities']['urls']) > 0:
-                        tweets.at[i,_] = (v['Entities']['urls'][0]['expanded_url'])
-                elif 'urls' in v['Entities'].keys():
-                    if len(v['Entities']['urls']) < 0:
-                        tweets.at[i,_] = v['Entities']['urls']
+                if 'entities' in v['Extended_Entities'].keys():
+                    if len(v['Extended_Entities']['entities']['urls']) > 0:
+                        tweets.at[i,_] = str(v['Extended_Entities']['entities']['urls'][0]['expanded_url'])
+                    else:
+                        tweets.at[i,_] = "No " + _
 
                     
                     
@@ -77,12 +86,12 @@ def column_creator(tweets,col): # can definitely clean this up, hardest part is 
     except:
         pass
 
-def get_media(tweets):
+def get_media(tweets,path):
     import wget
     for url in tweets['media_url_https']:
         try:
             if ".jpg" in url:
-                wget.download(url, out='../images/')
+                wget.download(url, out=path)
         except:
             return ("something went wrong with {}".format(url))
 
@@ -96,9 +105,8 @@ def load_image_into_numpy_array(image):
 
 def duplicate_drop(df1,df2):
     import pandas as pd
-    tweets = pd.concat([df1,df2])
-    tweets = tweets.drop_duplicates(subset=['Id'],keep=False)
-    tweets.reset_index(drop=True, inplace=True)
+    tweets = pd.concat([df1,df2],ignore_index=True)
+    tweets = tweets.drop_duplicates(subset='Id_str',keep=False).reset_index(drop=True)
     return tweets
 
 
@@ -106,9 +114,11 @@ def duplicate_drop(df1,df2):
 def run_inference_for_single_image(image, graph):
   import numpy as np
   import tensorflow as tf
-  from object_detection.utils import ops as utils_ops
-  from utils import label_map_util
-  from utils import visualization_utils as vis_util
+  import sys
+  sys.path.append("..")
+  from models.research.object_detection.utils import ops as utils_ops
+  from models.research.object_detection.utils import label_map_util
+  from models.research.object_detection.utils import visualization_utils as vis_util
   with graph.as_default():
     with tf.Session() as sess:
       # Get handles to input and output tensors
@@ -155,17 +165,3 @@ def run_inference_for_single_image(image, graph):
   return output_dict
 
 
-
-def twitter_poster(tweets):
-    import Twitter.private
-    import tweepy
-    auth = tweepy.OAuthHandler(private.consumer_key, private.consumer_secret)
-    auth.set_access_token(private.access_token, private.access_token_secret)
-
-    api = tweepy.API(auth)
-    status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini "
-    for index, image in tweets.iterrows():
-        if image['post'] == True:
-            status = "beep boop I'm an Image recognition Bot #Huracan #Lamborghini "
-            api.update_with_media(filename="./test_images/" + str(image['image_name']), status=status)
-    return "Tweets posted"
